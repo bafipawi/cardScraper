@@ -35,6 +35,9 @@ for i in 1..totalPages do
       if (tmp =~ /&#x27;/)
         tmp = tmp.gsub("&#x27;", "'")
       end
+      if (tmp =~ /&quot;/)
+        tmp = tmp.gsub("&quot;", "\"")
+      end
       allNames << tmp
     end
   }
@@ -44,10 +47,7 @@ editions = {}
 for name in 0..allNames.count-1 do
   found = false
   searchName = allNames[name]
-  #searchName = searchName.gsub(" ", "%20")
-  #searchName = searchName.gsub("ö", "o")
   searchName = URI.encode(searchName)
-  puts searchName
   page = open("http://deckbox.org/mtg/#{searchName}")
 
   countCost = 0
@@ -80,7 +80,7 @@ for name in 0..allNames.count-1 do
     # Price
     
     # Rules
-    if (line =~ /Rules/)
+    if (line =~ /<td class=\"label\">Rules/)
       tmpRules = line.split("<td>")[1]
       tmpRules = tmpRules.split("</td>")[0]
       cardRules = tmpRules
