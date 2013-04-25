@@ -3,59 +3,71 @@
 require 'open-uri'
 require 'json'
 
-page = open("http://deckbox.org/games/mtg/cards?p=1")
-totalPages = ""
-page.each_line { |line|
-  if (line =~ /Page\ 1/)
-    tmp = line.split(">")[1]
-    tmp = tmp.split("<")[0]
-    tmp = tmp.split(" ")[3]
-    totalPages = tmp.to_i
-  end
-}
-allNames = {}
-for i in 1..totalPages do
-  page = open("http://deckbox.org/games/mtg/cards?p=#{i}")
-  count = 0
-  found = false
-  page.each_line { |line|
-    if (line =~ /class=\"card_name\"/)
-      found = true
-    end
+`rm errors`
+`touch errors`
 
-    if (found)
-      count += 1
-    end
-    if (count == 3)
-      count = 0
-      found = false
-      tmp = line.split(">")[1]
-      tmp = tmp.split("<")[0]
+removeOldCardNames = false
+removeOldCards     = false
 
-      if (tmp =~ /&#x27;/)
-        tmp = tmp.gsub("&#x27;", "'")
-      end
-      if (tmp =~ /&quot;/)
-        tmp = tmp.gsub("&quot;", "\"")
-      end
-      if (tmp =~ /&amp;/)
-        tmp = tmp.gsub("&amp;", "")
-      end
-      allNames[tmp] = {}
-    end
-  }
+if (ARGV[0] == '-A')
+  removeOldCardNames = true
+  removeOldCards = true
+end
+if (ARGV[0] == '-a')
+  removeOldCards = true
 end
 
-`rm cardNames.json`
+allNames = {}
+if (removeOldCardNames)
+  page = open("http://deckbox.org/games/mtg/cards?p=1")
+  totalPages = 0
+  page.each_line { |line|
+    if (line =~ /Page\ 1/)
+      tmp = line.split(">")[1]
+      tmp = tmp.split("<")[0]
+      tmp = tmp.split(" ")[3]
+      totalPages = tmp.to_i
+    end
+  }
+  for i in 1..totalPages do
+    puts "Getting page #{i}"
+    page = open("http://deckbox.org/games/mtg/cards?p=#{i}")
+    count = 0
+    found = false
+    page.each_line { |line|
+      if (line =~ /class=\"card_name\"/)
+        found = true
+      end
 
-f = File.new('cardNames.json', 'w')
-f.puts allNames.to_json
-f.close
+      if (found)
+        count += 1
+      end
+      if (count == 3)
+        count = 0
+        found = false
+        tmp = line.split(">")[1]
+        tmp = tmp.split("<")[0]
 
-removeOldCards = false
+        if (tmp =~ /&#x27;/)
+          tmp = tmp.gsub("&#x27;", "'")
+        end
+        if (tmp =~ /&quot;/)
+          tmp = tmp.gsub("&quot;", "\"")
+        end
+        if (tmp =~ /&amp;/)
+          tmp = tmp.gsub("&amp;", "")
+        end
+        allNames[tmp] = {}
+      end
+    }
+  end
 
-if (ARGV[0] == '-r')
-  removeOldCards = true
+  `rm cardNames.json`
+
+  puts "Writing names out"
+  f = File.new('cardNames.json', 'w')
+  f.puts allNames.to_json
+  f.close
 end
 
 tmpJson = ""
@@ -74,6 +86,7 @@ if (removeOldCards)
   `rm cards.json`
 end
 
+puts "Reading old cards in"
 if (File.exists? 'cards.json')
   if (!File.zero? 'cards.json')
     f = File.new('cards.json', 'r')
@@ -99,8 +112,11 @@ if (finishedCards != {})
   end
 end
 
+e = File.new('errors', 'w')
+
 if allNames.keys.count > 0
   allNames.keys.each do |name|
+    puts "Getting card info for #{name}"
     searchName = URI.encode(name)
     page = ""
     begin
@@ -113,6 +129,8 @@ if allNames.keys.count > 0
     costDone      = false
     foundEditions = false
     foundManaCost = false
+    foundColors   = false
+    foundType     = false
     editionsCount = 0
 
     cardPrice    = ""
@@ -124,6 +142,9 @@ if allNames.keys.count > 0
     cardEditions = []
 
     page.each_line { |line|
+      if (name =~ /Look at/ || name =~ /RD's Secret/)
+        break
+      end
       #Price
       if (line =~ /\$/)
         foundCost = true
@@ -150,25 +171,50 @@ if allNames.keys.count > 0
         tmpRules = tmpRules.gsub('<img class="', "")
         tmpRules = tmpRules.gsub(' src="/images/icon_spacer.gif" />', "")
         tmpRules = tmpRules.gsub('mtg_tap inline_block">', "{tap}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_W"',    "{W}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_B"',    "{B}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_U"',    "{U}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_R"',    "{R}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_G"',    "{G}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_1"',    "{1}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2"',    "{2}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_3"',    "{3}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_4"',    "{4}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_5"',    "{5}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_6"',    "{6}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_7"',    "{7}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_8"',    "{8}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_9"',    "{9}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_10"',   "{10}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_X"',    "{X}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_BR"',   "{BR}")
-        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_snow"', "{0}")
-        tmpRules = tmpRules.gsub('mtg_chaos inline_block">', "{Choas}")
+        tmpRules = tmpRules.gsub('mtg_untap inline_block">', "{untap}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_W"',        "{W}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_B"',        "{B}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_U"',        "{U}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_R"',        "{R}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_G"',        "{G}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_0"',        "{0}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_1"',        "{1}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2"',        "{2}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_3"',        "{3}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_4"',        "{4}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_5"',        "{5}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_6"',        "{6}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_7"',        "{7}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_8"',        "{8}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_9"',        "{9}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_10"',       "{10}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_100"',      "{100}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_X"',        "{X}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_BR"',       "{BR}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_GR"',       "{GR}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_GW"',       "{GW}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_RP"',       "{RP}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_BP"',       "{BP}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_WP"',       "{WP}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_UB"',       "{UB}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_WU"',       "{WU}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_WB"',       "{WB}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2B"',       "{2B}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2U"',       "{2U}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2G"',       "{2G}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2W"',       "{2W}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_2R"',       "{2R}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_GU"',       "{GU}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_GP"',       "{GP}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_RW"',       "{RW}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_UR"',       "{UR}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_BG"',       "{BG}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_RG"',       "{RG}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_UP"',       "{UP}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_Infinity"', "{∞}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_HalfR"',    "{HalfR}")
+        tmpRules = tmpRules.gsub('mtg_mana mtg_mana_snow"',     "{0}")
+        tmpRules = tmpRules.gsub('mtg_chaos inline_block">',    "{Choas}")
         tmpRules = tmpRules.gsub('<span class=\'mtg_keyword_explanation\'>', "")
         tmpRules = tmpRules.gsub('</span>', "")
 
@@ -188,33 +234,52 @@ if allNames.keys.count > 0
         foundManaCost = true
       end
 
+      if (foundType)
+        tmpType = line.split("<td>")[1]
+        tmpType = tmpType.split("</td>")[0]
+        cardType = tmpType.split("-")[0]
+        cardType = cardType.gsub(" ", "")
+        if (tmpType =~ /-/)
+          tmpType = tmpType.split("-")[1]
+          tmpType = tmpType.sub(' ', "")
+          if (tmpType =~ / /)
+            tmpType  = tmpType.split(" ")
+            tmpType.each do |type|
+              cardSubTypes << type
+            end
+          else
+            cardSubTypes[0] = tmpType
+          end
+        else
+          cardSubTypes[0] = ""
+        end
+        foundType = false
+      end
+
       #Type
       if (line =~ /Type/)
         tmpType  = line.split("<td>")[1]
-        tmpType  = tmpType.split("</td>")[0]
-        cardType = tmpType.split(" - ")[0]
-        tmpType  = tmpType.split(" - ")[1]
-        tmpType  = tmpType.split(" ")
-        tmpType.each do |type|
-          cardSubTypes << type
+        if (tmpType)
+          tmpType  = tmpType.split("</td>")[0]
+          cardType = tmpType.split("-")[0]
+          cardType = cardType.gsub(' ', "")
+          if (tmpType =~ /-/)
+            tmpType = tmpType.split("-")[1]
+            tmpType = tmpType.sub(' ', "")
+            if (tmpType =~ / /)
+              tmpType  = tmpType.split(" ")
+              tmpType.each do |type|
+                cardSubTypes << type
+              end
+            else
+              cardSubTypes[0] = tmpType
+            end
+          else
+            cardSubTypes[0] = ""
+          end
+        else
+          foundType = true
         end
-      end
-      
-      #Colors
-      if (cardManaCost =~ /R/)
-        cardColors << "Red"
-      elsif (cardManaCost =~ /W/)
-        cardColors << "White"
-      elsif (cardManaCost =~ /B/)
-        cardColors << "Black"
-      elsif (cardManaCost =~ /U/)
-        cardColors << "Blue"
-      elsif (cardManaCost =~ /G/)
-        cardColors << "Green"
-      elsif (cardType =~ /Land/)
-        cardColors << "NA"
-      else
-        cardColors << "Colorless"
       end
 
       #Editions
@@ -234,6 +299,24 @@ if allNames.keys.count > 0
         break
       end
     }
+
+    #Colors
+    if (cardManaCost =~ /R/)
+      cardColors << "Red"
+    elsif (cardManaCost =~ /W/)
+      cardColors << "White"
+    elsif (cardManaCost =~ /B/)
+      cardColors << "Black"
+    elsif (cardManaCost =~ /U/)
+      cardColors << "Blue"
+    elsif (cardManaCost =~ /G/)
+      cardColors << "Green"
+    elsif (cardType =~ /Land/)
+      cardColors << "NA"
+    else
+      cardColors << "Colorless"
+    end
+
     finishedCards[name] = {"Name"      => name, 
                            "Price"     => cardPrice, 
                            "Rules"     => cardRules, 
@@ -249,3 +332,5 @@ if allNames.keys.count > 0
     f.close
   end
 end
+e.close
+puts "done!"
