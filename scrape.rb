@@ -333,4 +333,7 @@ if allNames.keys.count > 0
   end
 end
 e.close
+
+`rm /Users/cthansen/Sites/cards`
+`cp cards.json /Users/cthansen/Sites/cards`
 puts "done!"
