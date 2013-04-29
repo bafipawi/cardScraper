@@ -140,9 +140,10 @@ if allNames.keys.count > 0
     cardType     = []
     cardSubTypes = []
     cardEditions = []
+    cardImage    = ""
 
     page.each_line { |line|
-      if (name =~ /Look at/ || name =~ /RD's Secret/)
+      if (name =~ /Look at/ || name =~ /RD's Secret/ || name =~ /___/)
         break
       end
       #Price
@@ -295,6 +296,13 @@ if allNames.keys.count > 0
         foundEditions = false
       end
 
+      #Image Link
+      if (line =~ /\/system\/images\/mtg\/cards/)
+        tmpLink = line.split("src=\"")[1]
+        tmpLink = tmpLink.split("\" alt")[0]
+        cardImage = "www.deckbox.org#{tmpLink}"
+      end
+
       if (line =~ /card_statistics/)
         break
       end
@@ -317,6 +325,7 @@ if allNames.keys.count > 0
       cardColors << "Colorless"
     end
 
+    #Finish up
     finishedCards[name] = {"Name"      => name, 
                            "Price"     => cardPrice, 
                            "Rules"     => cardRules, 
@@ -324,7 +333,9 @@ if allNames.keys.count > 0
                            "Colors"    => cardColors,
                            "Type"      => cardType,
                            "Subtype"   => cardSubTypes,
-                           "Editions"  => cardEditions}
+                           "Editions"  => cardEditions,
+                           "Card Link" => cardImage
+    }
 
     `rm cards.json`
     f = File.new('cards.json', 'w')
