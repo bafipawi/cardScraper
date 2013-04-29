@@ -9,12 +9,12 @@ require 'json'
 removeOldCardNames = false
 removeOldCards     = false
 
-if (ARGV[0] == '-A')
+if (ARGV[0] == '-a' || ARGV[0] == '--all')
   removeOldCardNames = true
   removeOldCards = true
 end
-if (ARGV[0] == '-a')
-  removeOldCards = true
+if (ARGV[0] == '-u' || ARGV[0] == '--update')
+  removeOldCardNames = true
 end
 
 allNames = {}
@@ -345,6 +345,6 @@ if allNames.keys.count > 0
 end
 e.close
 
-`rm /Users/cthansen/Sites/cards`
-`cp cards.json /Users/cthansen/Sites/cards`
+#`rm /Users/cthansen/Sites/cards`
+#`cp cards.json /Users/cthansen/Sites/cards`
 puts "done!"
